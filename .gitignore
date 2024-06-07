@@ -1,0 +1,8 @@
+myenv
+bot/*
+bot_temp/*
+student/*
+student_temp/*
+*.pyc
+.env
+.wav
