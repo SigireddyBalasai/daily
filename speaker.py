@@ -1,5 +1,3 @@
-from daily_init import Daily,app_error,app_quit,client,microphone_device
-
 import wave
 import threading
 import time
@@ -9,7 +7,7 @@ semaphore = threading.Semaphore(1)
 
 
 
-def send_audio(microphone_device,app_quit,app_error):
+def send_audio(microphone_device,app_quit,app_error,client):
 
     try:
         if app_error:
@@ -52,12 +50,4 @@ def send_audio(microphone_device,app_quit,app_error):
 
 
 
-thread1 = threading.Thread(target=send_audio, args=(microphone_device, app_quit, app_error), daemon=True)
 
-
-try:
-    thread1.start()
-    thread1.join()
-except Exception as e:
-    client.leave()
-    client.release()

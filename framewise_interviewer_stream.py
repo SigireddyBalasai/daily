@@ -17,7 +17,8 @@ from pydub import AudioSegment
 from os import path
 from daily import Daily,CallClient
 from pydub import AudioSegment
-from load_dotenv import load_dotenv
+from dotenv import load_dotenv
+import glob
 load_dotenv()
 
 
@@ -25,21 +26,21 @@ load_dotenv()
 
 
 session = Session(
-    aws_access_key_id=os.getenv['AWS_ACCESS_KEY'],
-    aws_secret_access_key=os.getenv['AWS_SECRET_KEY'],
-    region_name=os.getenv['AWS_REGION']
+    aws_access_key_id=os.environ['AWS_ACCESS_KEY'],
+    aws_secret_access_key=os.environ['AWS_SECRET_KEY'],
+    region_name=os.environ['AWS_REGION']
 )
 polly_client = session.client('polly')
-transcribe = boto3.client('transcribe', region_name=os.getenv['AWS_REGION'],
-                          aws_access_key_id=os.getenv['AWS_ACCESS_KEY'],
-                          aws_secret_access_key=os.getenv['AWS_SECRET_KEY'])
+transcribe = boto3.client('transcribe', region_name=os.environ['AWS_REGION'],
+                          aws_access_key_id=os.environ['AWS_ACCESS_KEY'],
+                          aws_secret_access_key=os.environ['AWS_SECRET_KEY'])
 recognizer = sr.Recognizer()
 recognizer.energy_threshold = 2000
 
 
 import getpass
 import os
-os.environ
+
 
 model = ChatOpenAI(model="gpt-4o")
 
@@ -67,9 +68,9 @@ def get_chatgpt_response(prompt):
 
 async def aws_polly_speak(text):
     session = Session(
-        aws_access_key_id=os.getenv['AWS_ACCESS_KEY'],
-        aws_secret_access_key=os.getenv['AWS_SECRET_KEY'],
-        region_name=os.getenv['AWS_REGION']
+        aws_access_key_id=os.environ['AWS_ACCESS_KEY'],
+        aws_secret_access_key=os.environ['AWS_SECRET_KEY'],
+        region_name=os.environ['AWS_REGION']
     )
     polly_client = session.client('polly')
     try:
@@ -126,12 +127,23 @@ def start_transcribe_stream():
                 file_name = f"student/{file}"
                 dest_file = f"student_temp/{file}"
                 print(file_name)
-                with sr.AudioFile(file_name) as source:
+                user_input = None
+                try:
+                    with sr.AudioFile(file_name) as source:
 
-                    source = recognizer.record(source)
-                    print("source: ", source)
-                    os.rename(file_name, dest_file)
-                    user_input = recognizer.recognize_google(source)
+                        source = recognizer.record(source)
+                        print("source: ", source)
+                        os.rename(file_name, dest_file)
+                        [os.remove(i) for i in glob.iglob("student/*.wav")]
+                        try:
+                            
+                            user_input = recognizer.recognize_google(source)
+                            print(user_input)
+                            asyncio.run(main({"messages": [HumanMessage(content=user_input)]}))
+                        except Exception as e:
+                            print(e)
+                except Exception as e:
+                    print(e)
                     ''' 
                     user_input = recognizer.recognize_amazon(audio_data, bucket_name=None,
                                                             access_key_id=AWS_ACCESS_KEY,
@@ -142,9 +154,9 @@ def start_transcribe_stream():
                     '''
 
                     
-                    
-                    print("user_input: ", user_input)
-                    asyncio.run(main({"messages": [HumanMessage(content=user_input)]}))
+                    if user_input is not None:
+                        print("user_input: ", user_input)
+                        asyncio.run(main({"messages": [HumanMessage(content=user_input)]}))
             else:
                 pass    
                                     

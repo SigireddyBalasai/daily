@@ -5,7 +5,6 @@ from enum import Enum
 from datetime import datetime
 import wave
 import os
-from daily_init import *
 from constants import SAMPLE_RATE, NUM_CHANNELS, SPEECH_THRESHOLD, SPEECH_THRESHOLD_MS, SILENCE_THRESHOLD_MS, VAD_RESET_PERIOD_MS
 
 
@@ -14,7 +13,7 @@ class SpeechStatus(Enum):
     NOT_SPEAKING = 2
 
 class SpeechDetection:
-    def __init__(self, sample_rate, num_channels):
+    def __init__(self, sample_rate, num_channels,vad):
         self.__speech_threshold = SPEECH_THRESHOLD
         self.__speech_threshold_ms = SPEECH_THRESHOLD_MS
         self.__silence_threshold_ms = SILENCE_THRESHOLD_MS
@@ -23,11 +22,8 @@ class SpeechDetection:
         self.__started_speaking_time = 0
         self.__last_speaking_time = 0
 
-        self.__vad = Daily.create_native_vad(
-            reset_period_ms=VAD_RESET_PERIOD_MS,
-            sample_rate=sample_rate,
-            channels=num_channels
-        )
+        self.__vad = vad
+        
 
     def analyze(self, buffer):
         confidence = self.__vad.analyze_frames(buffer)
@@ -59,7 +55,7 @@ def record_audio_to_file(file_path, frames):
         wf.writeframes(b''.join(frames))
 
 
-def receive_audio(speaker_device, vad, app_quit, app_error):
+def receive_audio(speaker_device, vad, app_quit, app_error,client):
     try:
         if app_error:
             print(f"Unable to receive audio!")
@@ -73,9 +69,10 @@ def receive_audio(speaker_device, vad, app_quit, app_error):
             buffer = speaker_device.read_frames(int(SAMPLE_RATE / 100))
             if len(buffer) > 0:
                 confidence, status = vad.analyze(buffer)
-                print(confidence)
+                # print(confidence)
                 if status == SpeechStatus.SPEAKING and recording:
                     frames.append(buffer)
+                    print(datetime.now(),confidence)
 
                 if status == SpeechStatus.SPEAKING:
                     if not recording:
@@ -88,7 +85,7 @@ def receive_audio(speaker_device, vad, app_quit, app_error):
                             current_time = datetime.now().strftime("%Y%m%d%H%M%S")
                             file_name = f"student/audio_{current_time}.wav"
                             record_audio_to_file(file_name, frames)
-                            print(f"Saved audio to {file_name} and time is {time.time()}")
+                            print(f"Saved audio to {file_name} and time is {datetime.now()}")
                         frames = []
                         recording = False
     except KeyboardInterrupt:
@@ -97,21 +94,9 @@ def receive_audio(speaker_device, vad, app_quit, app_error):
 
                     
 
-vad = SpeechDetection(sample_rate=SAMPLE_RATE, num_channels=NUM_CHANNELS)
 
 
 
-receive_audio(speaker_device,vad,app_quit,app_error)
 
-thread1 = threading.Thread(receive_audio,(speaker_device,vad,app_quit,app_error))
-
-thread1.start()
-
-try:
-    thread1.join()
-except Exception as e:
-    print(e)
-    client.leave()
-    client.release()
 
 
